@@ -1,12 +1,4 @@
-<!DOCTYPE html>
-<!-- Feel free to use this -->
-<!-- Blue page template -->
-<html id="page">
-    <head>
-        <meta charset="utf-8">
-        <title>Blue page template</title>
-        <style>
-
+/* imported from Khan Academy */
 div:not(.bg):not(.bar), section, nav, header, footer, aside, form, main, article, span {
   background-color: transparent !important;
   position: relative !important;
@@ -175,50 +167,4 @@ span {
     display: block; /* its a div now */
 }
 
-/style>
-<!-- Requried -->
-<div class="bg"></div>
-<script>
-var kaF<ix = document.createElement("style");
-kaFix.textContent = "@keyframes techGridMove { 0% { background-position: 0px 0px; } 100% { background-position: 32px 32px; }";
-document.head.appendChild(kaFix);
-</script>
-</head>
-<body>
-<div class="win">
-<h3>Hello, World</h3>
-Blah Blah Blah Blah Blah Blah Blah Blah<hr>
-The line above is a thick blue line<br>
-The line above is talking about the line above it
-<p>Im a P element, DEAL WITH IT >=]</p>
-<div class="nest">
-I am a nested window (diffrent class)
-</div>
-<span class="nest">
-I am actaully a SPAN element with the same class as<br>
-the DIV element above<br>
-Im not as clear though :(
-</span>
-<div class="bar-container">
-  <div class="bar" style="--bar-width: 25%;"></div>
-</div>
-<div class="bar-container">
-  <div class="bar" style="--bar-width: 75%;"></div>
-</div>
-<details class="drop">
-  <summary>Dropdown</summary>
-  <p>Hello, <b>World</b><br>
-<small>foo</small></p>
-</details>
-<div class="code"># Print some text
-print("-" * 20)
-print("Hello, Word!")
-print("-" * 20)</div>
-<br>
-<textarea class="nest">I am a NEST class</textarea>
-<button class="nest">Im a NEST class too</button>
-<br><p>this guy is a NEST class as well, as well as a INPUT element</p>
-<input class="nest">
-</div>
-</body>
-</html>
+@keyframes techGridMove { 0% { background-position: 0px 0px; } 100% { background-position: 32px 32px; } 
