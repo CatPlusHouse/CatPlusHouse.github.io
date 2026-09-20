@@ -50,13 +50,6 @@
             gap: 12px;
         }
 
-        .attach-icon {
-            width: 24px;
-            height: 24px;
-            fill: #5f6368;
-            cursor: pointer;
-        }
-
         .login-btn {
             background-color: #d2e3fc;
             color: #174ea6;
@@ -66,6 +59,12 @@
             font-size: 14px;
             font-weight: 500;
             cursor: pointer;
+        }
+
+        .login-btn.editing {
+            background-color: #6d4aff;
+            color: #ffffff;
+            border-radius: 8px;
         }
 
         .chat-container {
@@ -91,6 +90,7 @@
             font-size: 15px;
             line-height: 1.5;
             word-wrap: break-word;
+            white-space: pre-wrap;
         }
 
         .message.user .bubble {
@@ -101,9 +101,11 @@
         .message.ai {
             display: flex;
             justify-content: flex-start;
+            flex-wrap: wrap;
         }
 
         .message.ai .bubble {
+            flex-basis: 100%;
             background-color: transparent;
             color: #202124;
             padding: 0;
@@ -113,6 +115,7 @@
             display: flex;
             gap: 12px;
             margin-top: 8px;
+            flex-basis: 100%;
         }
 
         .action-icon {
@@ -147,11 +150,15 @@
             padding: 8px 16px;
         }
 
-        .plus-icon {
+        .plus-icon,
+        .mic-icon {
             width: 24px;
             height: 24px;
             fill: #5f6368;
             cursor: pointer;
+        }
+
+        .plus-icon {
             margin-right: 8px;
         }
 
@@ -164,33 +171,11 @@
             outline: none;
         }
 
-        .mic-icon {
-            width: 24px;
-            height: 24px;
-            fill: #5f6368;
-            cursor: pointer;
-        }
-
         .footer-text {
             text-align: center;
             font-size: 12px;
             color: #5f6368;
             margin-top: 8px;
-        }
-
-        /* Editor Mode Styles */
-        .editor-toggle {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            background-color: #fff;
-            border: 2px solid #6d4aff;
-            color: #6d4aff;
-            padding: 10px 16px;
-            border-radius: 8px;
-            font-size: 14px;
-            cursor: pointer;
-            z-index: 1000;
         }
 
         .editable {
@@ -220,41 +205,30 @@
     </style>
 </head>
 <body>
-    <!-- Editor Toggle Button -->
-    <button class="editor-toggle" id="toggleEditor">🔧 Edit Mode</button>
-
-    <!-- Add Message Button (only in editor mode) -->
     <button class="add-message-btn hidden" id="addMessageBtn">+ Add Message</button>
 
-    <!-- Header -->
     <div class="header">
         <div class="header-left">
-            <svg class="menu-icon" viewBox="0 0 24 24">
+            <svg class="menu-icon" viewBox="0 0 24 24" aria-hidden="true">
                 <path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/>
             </svg>
             <span class="logo">Gemini</span>
         </div>
         <div class="header-right">
-            <svg class="attach-icon" viewBox="0 0 24 24">
-                <path d="M16.5 6v11.5c0 2.21-1.79 4-4 4s-4-1.79-4-4V5c0-1.38 1.12-2.5 2.5-2.5s2.5 1.12 2.5 2.5v10.5c0 .55-.45 1-1 1s-1-.45-1-1V6H10v9.5c0 1.38 1.12 2.5 2.5 2.5s2.5-1.12 2.5-2.5V5c0-2.21-1.79-4-4-4S7 2.79 7 5v12.5c0 3.04 2.46 5.5 5.5 5.5s5.5-2.46 5.5-5.5V6h-1.5z"/>
-            </svg>
-            <button class="login-btn">Login</button>
+            <!-- This is the editor toggle, styled as Login when not editing. -->
+            <button class="login-btn" id="toggleEditor">Login</button>
         </div>
     </div>
 
-    <!-- Chat Container -->
-    <div class="chat-container" id="chatContainer">
-        <!-- Messages will be added here dynamically -->
-    </div>
+    <div class="chat-container" id="chatContainer"></div>
 
-    <!-- Input Area -->
     <div class="input-area">
         <div class="input-container">
-            <svg class="plus-icon" viewBox="0 0 24 24">
+            <svg class="plus-icon" viewBox="0 0 24 24" aria-hidden="true">
                 <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
             </svg>
             <input type="text" class="input-field" id="messageInput" placeholder="Ask Gemini">
-            <svg class="mic-icon" viewBox="0 0 24 24">
+            <svg class="mic-icon" viewBox="0 0 24 24" aria-hidden="true">
                 <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/>
                 <path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c1.39-.49 4-3.39 4-6.92h-2z"/>
             </svg>
@@ -270,40 +244,12 @@
 
         let editorMode = false;
 
-        // Sample initial conversation
         const initialMessages = [
             { type: 'user', text: 'Hello' },
             { type: 'ai', text: 'Hello! How can I help you today?' },
             { type: 'user', text: 'Say "egg" 100 times' },
-            { type: 'ai', text: 'egg egg egg egg egg egg egg egg egg egg egg egg egg egg egg egg egg egg egg egg\negg egg egg egg egg egg egg egg egg egg egg egg egg egg egg egg egg egg egg egg\negg egg egg egg egg egg egg egg egg egg egg egg egg egg egg egg egg egg egg egg\negg egg egg egg egg egg egg egg egg egg egg egg egg egg egg egg egg egg egg egg\negg egg egg egg egg egg egg egg egg egg egg egg egg egg egg egg egg egg egg egg\negg egg egg egg egg egg egg egg egg egg egg egg egg egg egg egg egg egg egg egg' }
+            { type: 'ai', text: Array(100).fill('egg').join(' ') }
         ];
-
-        function renderMessages() {
-            chatContainer.innerHTML = '';
-            initialMessages.forEach((msg, index) => {
-                const messageDiv = document.createElement('div');
-                messageDiv.className = `message ${msg.type}`;
-                
-                if (msg.type === 'user') {
-                    messageDiv.innerHTML = `<div class="bubble">${escapeHtml(msg.text)}</div>`;
-                } else {
-                    messageDiv.innerHTML = `
-                        <div class="bubble">${escapeHtml(msg.text)}</div>
-                        <div class="message-actions">
-                            <svg class="action-icon" viewBox="0 0 24 24"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
-                            <svg class="action-icon" viewBox="0 0 24 24"><path d="M7 14c-1.66 0-3 1.34-3 3 0 1.31-1.16 2-2 2 .92 1.22 2.49 2 4 2 2.21 0 4-1.79 4-4 0-1.66-1.34-3-3-3m0 5c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2z"/></svg>
-                            <svg class="action-icon" viewBox="0 0 24 24"><path d="M6 10c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm12 0c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm-6 0c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/></svg>
-                        </div>
-                    `;
-                }
-                
-                chatContainer.appendChild(messageDiv);
-            });
-
-            if (editorMode) {
-                enableEditing();
-            }
-        }
 
         function escapeHtml(text) {
             const div = document.createElement('div');
@@ -311,62 +257,82 @@
             return div.innerHTML;
         }
 
+        function renderMessages() {
+            chatContainer.innerHTML = '';
+
+            initialMessages.forEach(msg => {
+                const messageDiv = document.createElement('div');
+                messageDiv.className = `message ${msg.type}`;
+
+                if (msg.type === 'user') {
+                    messageDiv.innerHTML = `<div class="bubble">${escapeHtml(msg.text)}</div>`;
+                } else {
+                    messageDiv.innerHTML = `
+                        <div class="bubble">${escapeHtml(msg.text)}</div>
+                        <div class="message-actions">
+                            <svg class="action-icon" viewBox="0 0 24 24" aria-label="Copy response">
+                                <path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/>
+                            </svg>
+                            <svg class="action-icon" viewBox="0 0 24 24" aria-label="More options">
+                                <path d="M6 10c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm12 0c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm-6 0c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/>
+                            </svg>
+                        </div>
+                    `;
+                }
+
+                chatContainer.appendChild(messageDiv);
+            });
+
+            if (editorMode) enableEditing();
+        }
+
         function enableEditing() {
             document.querySelectorAll('.bubble').forEach(bubble => {
-                bubble.contentEditable = true;
+                bubble.contentEditable = 'true';
                 bubble.classList.add('editable');
             });
-            
-            messageInput.contentEditable = true;
-            messageInput.classList.add('editable');
-            
-            document.querySelectorAll('.login-btn').forEach(btn => {
-                btn.style.display = 'none';
-            });
+
+            addMessageBtn.classList.remove('hidden');
+            toggleEditorBtn.classList.add('editing');
+            toggleEditorBtn.textContent = 'Done Editing';
         }
 
         function disableEditing() {
-            document.querySelectorAll('[contenteditable]').forEach(el => {
-                el.contentEditable = false;
-                el.classList.remove('editable');
+            document.querySelectorAll('.bubble[contenteditable]').forEach(bubble => {
+                bubble.contentEditable = 'false';
+                bubble.classList.remove('editable');
             });
-            
-            document.querySelectorAll('.login-btn').forEach(btn => {
-                btn.style.display = 'block';
-            });
+
+            addMessageBtn.classList.add('hidden');
+            toggleEditorBtn.classList.remove('editing');
+            toggleEditorBtn.textContent = 'Login';
         }
 
+        // Read the currently edited DOM into the data model before re-rendering.
         function updateMessagesFromDOM() {
-            const messages = [];
-            const messageEls = document.querySelectorAll('.message');
-            
-            messageEls.forEach(msgEl => {
-                const type = msgEl.classList.contains('user') ? 'user' : 'ai';
-                const bubble = msgEl.querySelector('.bubble');
-                messages.push({
-                    type: type,
-                    text: bubble.innerText
-                });
-            });
-            
-            // Save to localStorage
-            localStorage.setItem('geminiFakeChat', JSON.stringify(messages));
+            const messages = [...document.querySelectorAll('.message')].map(messageEl => ({
+                type: messageEl.classList.contains('user') ? 'user' : 'ai',
+                text: messageEl.querySelector('.bubble').innerText
+            }));
+
+            initialMessages.splice(0, initialMessages.length, ...messages);
+            saveMessages();
+        }
+
+        function saveMessages() {
+            localStorage.setItem('geminiFakeChat', JSON.stringify(initialMessages));
         }
 
         function sendMessage() {
             const text = messageInput.value.trim();
             if (!text || editorMode) return;
-            
-            // Add user message
-            initialMessages.push({ type: 'user', text: text });
+
+            initialMessages.push({ type: 'user', text });
             messageInput.value = '';
-            
-            // Add placeholder AI response
             initialMessages.push({ type: 'ai', text: '...' });
-            
+            saveMessages();
             renderMessages();
             scrollToBottom();
-            saveMessages();
         }
 
         function addNewMessage() {
@@ -375,13 +341,13 @@
                 alert('Must be "user" or "ai"');
                 return;
             }
-            
+
             const text = prompt('Enter message text:');
-            if (text) {
-                initialMessages.push({ type: type, text: text });
+            if (text !== null) {
+                initialMessages.push({ type, text });
+                saveMessages();
                 renderMessages();
                 scrollToBottom();
-                saveMessages();
             }
         }
 
@@ -389,57 +355,39 @@
             window.scrollTo(0, document.body.scrollHeight);
         }
 
-        function saveMessages() {
-            const currentMsgs = [];
-            document.querySelectorAll('.message').forEach(msgEl => {
-                const type = msgEl.classList.contains('user') ? 'user' : 'ai';
-                const bubble = msgEl.querySelector('.bubble');
-                currentMsgs.push({ type, text: bubble.innerText });
-            });
-            localStorage.setItem('geminiFakeChat', JSON.stringify(currentMsgs));
-        }
-
         function loadSavedMessages() {
             const saved = localStorage.getItem('geminiFakeChat');
-            if (saved) {
-                try {
-                    const parsed = JSON.parse(saved);
-                    if (Array.isArray(parsed)) {
-                        initialMessages.length = 0;
-                        initialMessages.push(...parsed);
-                    }
-                } catch (e) {
-                    console.log('Could not load saved messages');
+            if (!saved) return;
+
+            try {
+                const parsed = JSON.parse(saved);
+                if (Array.isArray(parsed)) {
+                    initialMessages.splice(0, initialMessages.length, ...parsed);
                 }
+            } catch (error) {
+                console.log('Could not load saved messages');
             }
         }
 
-        // Event Listeners
         toggleEditorBtn.addEventListener('click', () => {
-            editorMode = !editorMode;
-            toggleEditorBtn.textContent = editorMode ? '✅ Done Editing' : '🔧 Edit Mode';
-            
             if (editorMode) {
-                enableEditing();
-                addMessageBtn.classList.remove('hidden');
-            } else {
-                disableEditing();
-                addMessageBtn.classList.add('hidden');
+                // Capture edits first. Rendering before this would discard them.
                 updateMessagesFromDOM();
+                editorMode = false;
+                disableEditing();
+                renderMessages();
+            } else {
+                editorMode = true;
+                enableEditing();
             }
-            
-            renderMessages();
         });
 
         addMessageBtn.addEventListener('click', addNewMessage);
 
-        messageInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') {
-                sendMessage();
-            }
+        messageInput.addEventListener('keypress', event => {
+            if (event.key === 'Enter') sendMessage();
         });
 
-        // Initialize
         loadSavedMessages();
         renderMessages();
         scrollToBottom();
