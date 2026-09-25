@@ -1,0 +1,13 @@
+<!doctype html>
+<html>
+  <head>
+    <link rel="stylesheet" href="https://CatPlusHouse.github.io/index.css">
+    <title>Account seized</title>
+  </head>
+  <body>
+    <div class="bg"></div>
+    <div class="win">
+    <h1>Account seized</h1>
+    </div>
+  </body>
+</html>
