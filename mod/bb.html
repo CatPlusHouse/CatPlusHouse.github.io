@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TurboWarp BBCode iFrame Renderer</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        body, html {
+            width: 100%;
+            height: 100%;
+            background: transparent;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            color: #333;
+            overflow: auto;
+        }
+
+        #container {
+            width: 100%;
+            min-height: 100%;
+            padding: 12px;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start;
+        }
+
+        /* Instructions Screen when no message/command received yet */
+        #instructions {
+            background: rgba(255, 255, 255, 0.95);
+            border: 2px dashed #4f46e5;
+            border-radius: 8px;
+            padding: 16px;
+            max-width: 100%;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+        }
+        #instructions h2 {
+            font-size: 16px;
+            color: #4f46e5;
+            margin-bottom: 8px;
+        }
+        #instructions p {
+            font-size: 13px;
+            color: #4b5563;
+            margin-bottom: 6px;
+            line-height: 1.4;
+        }
+        #instructions code {
+            background: #eef2ff;
+            color: #312e81;
+            padding: 2px 5px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 12px;
+            word-break: break-all;
+        }
+        #instructions ul {
+            margin-left: 18px;
+            margin-top: 6px;
+            font-size: 13px;
+            color: #4b5563;
+        }
+        #instructions li {
+            margin-bottom: 4px;
+        }
+
+        /* Output container */
+        #output {
+            width: 100%;
+            word-break: break-word;
+            line-height: 1.5;
+        }
+
+        /* BBCode Styles */
+        .bb-center { text-align: center; display: block; }
+        .bb-left { text-align: left; display: block; }
+        .bb-right { text-align: right; display: block; }
+        .bb-bold { font-weight: bold; }
+        .bb-italic { font-style: italic; }
+        .bb-underline { text-decoration: underline; }
+        .bb-strike { text-decoration: line-through; }
+        .bb-big { font-size: 1.3em; }
+        .bb-small { font-size: 0.8em; }
+        
+        .bb-quote {
+            border-left: 4px solid #cbd5e1;
+            padding-left: 10px;
+            margin: 6px 0;
+            color: #475569;
+            background: rgba(0,0,0,0.02);
+        }
+        .bb-code {
+            font-family: monospace;
+            background: rgba(0,0,0,0.05);
+            padding: 2px 6px;
+            border-radius: 4px;
+            border: 1px solid rgba(0,0,0,0.1);
+            white-space: pre-wrap;
+        }
+    </style>
+</head>
+<body>
+
+<div id="container">
+    <div id="instructions">
+        <h2>TurboWarp BBCode iFrame Ready</h2>
+        <p>This iFrame is waiting for messages from your TurboWarp project via the iFrame extension.</p>
+        <p><strong>Example Commands to send from TurboWarp:</strong></p>
+        <ul>
+            <li><code>set [color=#ff0000][center]Hello [plain][pee][/plain] World![/center][/color]</code></li>
+            <li><code>setline:1 [color="#00aa00"]Line 1 content[/color]</code></li>
+            <li><code>getline:1</code> (Replies back to TurboWarp with line 1)</li>
+            <li><code>clear</code></li>
+        </ul>
+    </div>
+    <div id="output" style="display: none;"></div>
+</div>
+
+<script>
+    // Multi-line buffer storage
+    const lines = {};
+    let hasReceivedCommand = false;
+
+    // Helper to sanitize HTML to prevent malicious XSS while letting valid rendering styling work
+    function escapeHtml(text) {
+        return text
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;");
+    }
+
+    // Advanced BBCode Parser supporting [plain], [newline], colors (hex/named/quoted), etc.
+    function parseBBCode(input) {
+        if (!input) return "";
+
+        // 1. Isolate [plain]...[/plain] blocks using a placeholder token system
+        const plainStore = [];
+        let processed = input.replace(/[plain]([\s\S]*?)\[\/plain\]/gi, (match, p1) => {
+            const token = `__PLAIN_TOKEN_${plainStore.length}__`;
+            plainStore.push(escapeHtml(p1));
+            return token;
+        });
+
+        // 2. Escape regular HTML outside of plain tokens
+        processed = escapeHtml(processed);
+
+        // 3. Translate [newline] tag
+        processed = processed.replace(/[newline]/gi, '<br>');
+
+        // 4. Formatting tags
+        processed = processed.replace(/[b]([\s\S]*?)\[\/b\]/gi, '<strong class="bb-bold">$1</strong>');
+        processed = processed.replace(/[i]([\s\S]*?)\[\/i\]/gi, '<em class="bb-italic">$1</em>');
+        processed = processed.replace(/[u]([\s\S]*?)\[\/u\]/gi, '<span class="bb-underline">$1</span>');
+        processed = processed.replace(/[s]([\s\S]*?)\[\/s\]/gi, '<span class="bb-strike">$1</span>');
+        processed = processed.replace(/[big]([\s\S]*?)\[\/big\]/gi, '<span class="bb-big">$1</span>');
+        processed = processed.replace(/[small]([\s\S]*?)\[\/small\]/gi, '<span class="bb-small">$1</span>');
+
+        // 5. Alignment tags
+        processed = processed.replace(/[center]([\s\S]*?)\[\/center\]/gi, '<div class="bb-center">$1</div>');
+        processed = processed.replace(/[left]([\s\S]*?)\[\/left\]/gi, '<div class="bb-left">$1</div>');
+        processed = processed.replace(/[right]([\s\S]*?)\[\/right\]/gi, '<div class="bb-right">$1</div>');
+
+        // 6. Quote & Code blocks
+        processed = processed.replace(/[quote]([\s\S]*?)\[\/quote\]/gi, '<div class="bb-quote">$1</div>');
+        processed = processed.replace(/[code]([\s\S]*?)\[\/code\]/gi, '<code class="bb-code">$1</code>');
+
+        // 7. Color tags supporting hex (#RGB, #RRGGBB, #RRGGBBAA), named colors, and quotes e.g. [color="#ff0000"] or [color=blue]
+        processed = processed.replace(/\[color\s*=\s*(?:"([^"]+)"\vert{}'([^']+)'\vert{}([^\]]+))\]([\s\S]*?)\[\/color\]/gi, (match, q1, q2, unquoted, content) => {
+            let color = q1 || q2 || unquoted || '';
+            color = color.trim();
+            // Validate color format loosely (hex or standard color names) to prevent CSS injection
+            if (/^(#([0-9a-fA-F]{3,8})|[a-zA-Z]+|rgba?\(.+?\))$/.test(color)) {
+                return `<span style="color: ${color};">${content}</span>`;
+            }
+            return content;
+        });
+
+        // 8. Restore [plain] tokens with escaped literal content
+        plainStore.forEach((val, idx) => {
+            const token = `__PLAIN_TOKEN_${idx}__`;
+            processed = processed.replace(new RegExp(token, 'g'), val);
+        });
+
+        // Convert standard newlines to breaks if not already handled
+        processed = processed.replace(/\n/g, '<br>');
+
+        return processed;
+    }
+
+    // Render all stored lines combined or single text
+    function renderContent() {
+        const outputEl = document.getElementById('output');
+        const instEl = document.getElementById('instructions');
+
+        instEl.style.display = 'none';
+        outputEl.style.display = 'block';
+
+        const keys = Object.keys(lines).map(Number).sort((a, b) => a - b);
+        if (keys.length === 0) {
+            outputEl.innerHTML = '';
+            return;
+        }
+
+        let combined = '';
+        for (let k of keys) {
+            combined += lines[k] + '<br>';
+        }
+        outputEl.innerHTML = parseBBCode(combined);
+    }
+
+    // Listen for incoming messages from TurboWarp iFrame extension
+    window.addEventListener('message', (event) => {
+        let msg = event.data;
+        if (typeof msg !== 'string') {
+            try { msg = JSON.stringify(msg); } catch(e) { msg = String(msg); }
+        }
+        msg = msg.trim();
+
+        hasReceivedCommand = true;
+
+        if (msg === 'clear') {
+            for (let k in lines) delete lines[k];
+            renderContent();
+            return;
+        }
+
+        // Handle `set [message]` command
+        if (msg.startsWith('set ')) {
+            const content = msg.slice(4);
+            lines[1] = content;
+            // Clear other lines when global set is used
+            for (let k in lines) {
+                if (k !== '1') delete lines[k];
+            }
+            renderContent();
+            return;
+        }
+
+        // Handle `setline:N [content]` command
+        const setLineMatch = msg.match(/^setline:(\d+)\s+([\s\S]*)$/i);
+        if (setLineMatch) {
+            const lineNum = parseInt(setLineMatch[1], 10);
+            const content = setLineMatch[2];
+            lines[lineNum] = content;
+            renderContent();
+            return;
+        }
+
+        // Handle `getline:N` command -> replies back to TurboWarp via postMessage
+        const getLineMatch = msg.match(/^getline:(\d+)$/i);
+        if (getLineMatch) {
+            const lineNum = parseInt(getLineMatch[1], 10);
+            const val = lines[lineNum] || '';
+            window.parent.postMessage({ type: 'line_response', line: lineNum, content: val }, '*');
+            return;
+        }
+
+        // Fallback: treat any raw string message as setting line 1
+        lines[1] = msg;
+        renderContent();
+    });
+</script>
+
+</body>
+</html>
