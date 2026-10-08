@@ -10,10 +10,12 @@
             margin: 0;
             padding: 0;
         }
-        body, html {
+        
+        /* Force 100% transparency everywhere */
+        html, body {
             width: 100%;
             height: 100%;
-            background: transparent;
+            background: transparent !important;
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
             color: #333;
             overflow: auto;
@@ -26,9 +28,10 @@
             display: flex;
             flex-direction: column;
             justify-content: flex-start;
+            background: transparent !important;
         }
 
-        /* Instructions Screen when no message/command received yet */
+        /* Instructions Screen */
         #instructions {
             background: rgba(255, 255, 255, 0.95);
             border: 2px dashed #4f46e5;
@@ -72,6 +75,7 @@
             width: 100%;
             word-break: break-word;
             line-height: 1.5;
+            background: transparent !important;
         }
 
         /* BBCode Styles */
@@ -110,9 +114,9 @@
         <p>This iFrame is waiting for messages from your TurboWarp project via the iFrame extension.</p>
         <p><strong>Example Commands to send from TurboWarp:</strong></p>
         <ul>
-            <li><code>set [color=#ff0000][center]Hello [plain][pee][/plain] World![/center][/color]</code></li>
+            <li><code>set [color=#ff0000][center]Hello World![/center][/color]</code></li>
             <li><code>setline:1 [color="#00aa00"]Line 1 content[/color]</code></li>
-            <li><code>getline:1</code> (Replies back to TurboWarp with line 1)</li>
+            <li><code>getline:1</code></li>
             <li><code>clear</code></li>
         </ul>
     </div>
@@ -120,11 +124,9 @@
 </div>
 
 <script>
-    // Multi-line buffer storage
     const lines = {};
     let hasReceivedCommand = false;
 
-    // Helper to sanitize HTML to prevent malicious XSS while letting valid rendering styling work
     function escapeHtml(text) {
         return text
             .replace(/&/g, "&amp;")
@@ -132,11 +134,9 @@
             .replace(/>/g, "&gt;");
     }
 
-    // Advanced BBCode Parser supporting [plain], [newline], colors (hex/named/quoted), etc.
     function parseBBCode(input) {
         if (!input) return "";
 
-        // 1. Isolate [plain]...[/plain] blocks using a placeholder token system
         const plainStore = [];
         let processed = input.replace(/[plain]([\s\S]*?)\[\/plain\]/gi, (match, p1) => {
             const token = `__PLAIN_TOKEN_${plainStore.length}__`;
@@ -144,13 +144,9 @@
             return token;
         });
 
-        // 2. Escape regular HTML outside of plain tokens
         processed = escapeHtml(processed);
-
-        // 3. Translate [newline] tag
         processed = processed.replace(/[newline]/gi, '<br>');
 
-        // 4. Formatting tags
         processed = processed.replace(/[b]([\s\S]*?)\[\/b\]/gi, '<strong class="bb-bold">$1</strong>');
         processed = processed.replace(/[i]([\s\S]*?)\[\/i\]/gi, '<em class="bb-italic">$1</em>');
         processed = processed.replace(/[u]([\s\S]*?)\[\/u\]/gi, '<span class="bb-underline">$1</span>');
@@ -158,39 +154,30 @@
         processed = processed.replace(/[big]([\s\S]*?)\[\/big\]/gi, '<span class="bb-big">$1</span>');
         processed = processed.replace(/[small]([\s\S]*?)\[\/small\]/gi, '<span class="bb-small">$1</span>');
 
-        // 5. Alignment tags
         processed = processed.replace(/[center]([\s\S]*?)\[\/center\]/gi, '<div class="bb-center">$1</div>');
         processed = processed.replace(/[left]([\s\S]*?)\[\/left\]/gi, '<div class="bb-left">$1</div>');
         processed = processed.replace(/[right]([\s\S]*?)\[\/right\]/gi, '<div class="bb-right">$1</div>');
 
-        // 6. Quote & Code blocks
         processed = processed.replace(/[quote]([\s\S]*?)\[\/quote\]/gi, '<div class="bb-quote">$1</div>');
         processed = processed.replace(/[code]([\s\S]*?)\[\/code\]/gi, '<code class="bb-code">$1</code>');
 
-        // 7. Color tags supporting hex (#RGB, #RRGGBB, #RRGGBBAA), named colors, and quotes e.g. [color="#ff0000"] or [color=blue]
         processed = processed.replace(/\[color\s*=\s*(?:"([^"]+)"\vert{}'([^']+)'\vert{}([^\]]+))\]([\s\S]*?)\[\/color\]/gi, (match, q1, q2, unquoted, content) => {
-            let color = q1 || q2 || unquoted || '';
-            color = color.trim();
-            // Validate color format loosely (hex or standard color names) to prevent CSS injection
+            let color = (q1 || q2 || unquoted || '').trim();
             if (/^(#([0-9a-fA-F]{3,8})|[a-zA-Z]+|rgba?\(.+?\))$/.test(color)) {
                 return `<span style="color: ${color};">${content}</span>`;
             }
             return content;
         });
 
-        // 8. Restore [plain] tokens with escaped literal content
         plainStore.forEach((val, idx) => {
             const token = `__PLAIN_TOKEN_${idx}__`;
             processed = processed.replace(new RegExp(token, 'g'), val);
         });
 
-        // Convert standard newlines to breaks if not already handled
         processed = processed.replace(/\n/g, '<br>');
-
         return processed;
     }
 
-    // Render all stored lines combined or single text
     function renderContent() {
         const outputEl = document.getElementById('output');
         const instEl = document.getElementById('instructions');
@@ -211,7 +198,6 @@
         outputEl.innerHTML = parseBBCode(combined);
     }
 
-    // Listen for incoming messages from TurboWarp iFrame extension
     window.addEventListener('message', (event) => {
         let msg = event.data;
         if (typeof msg !== 'string') {
@@ -227,11 +213,9 @@
             return;
         }
 
-        // Handle `set [message]` command
         if (msg.startsWith('set ')) {
             const content = msg.slice(4);
             lines[1] = content;
-            // Clear other lines when global set is used
             for (let k in lines) {
                 if (k !== '1') delete lines[k];
             }
@@ -239,17 +223,14 @@
             return;
         }
 
-        // Handle `setline:N [content]` command
         const setLineMatch = msg.match(/^setline:(\d+)\s+([\s\S]*)$/i);
         if (setLineMatch) {
             const lineNum = parseInt(setLineMatch[1], 10);
-            const content = setLineMatch[2];
-            lines[lineNum] = content;
+            lines[lineNum] = setLineMatch[2];
             renderContent();
             return;
         }
 
-        // Handle `getline:N` command -> replies back to TurboWarp via postMessage
         const getLineMatch = msg.match(/^getline:(\d+)$/i);
         if (getLineMatch) {
             const lineNum = parseInt(getLineMatch[1], 10);
@@ -258,7 +239,6 @@
             return;
         }
 
-        // Fallback: treat any raw string message as setting line 1
         lines[1] = msg;
         renderContent();
     });
